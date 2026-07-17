@@ -4,7 +4,7 @@ export default function OverlayContent() {
   const [orderData, setOrderData] = useState([]);
 
   const fetchMyOrder = async () => {
-    await fetch('https://dudewalaservices.onrender.com/api/todaysorders', {
+    await fetch(`${process.env.REACT_APP_BASE_URL}/api/todaysorders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

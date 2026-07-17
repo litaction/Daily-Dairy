@@ -80,6 +80,7 @@ router.post("/LoginUser", [
         }
       }
       const authToken=jwt.sign(data,process.env.jwtsecret)
+      console.log("The secret from env is: ", process.env.jwtsecret)
       res.json({ success: true ,authToken:authToken});
     } catch (error) {
       console.log(error);

@@ -10,7 +10,7 @@ export default function ResetPassword() {
     e.preventDefault();
 
     try {
-      const response = await fetch('https://dudewalaservices.onrender.com/api/validateOldPassword', {
+      const response = await fetch(`${process.env.REACT_APP_BASE_URL}/api/validateOldPassword`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -31,19 +31,25 @@ export default function ResetPassword() {
       }
     } catch (error) {
       console.log(error);
-      // Handle error response
     }
-  };
-
-  const handleNewPasswordChange = (e) => {
-    setNewPassword(e.target.value);
   };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
 
+    // --- FRONTEND SECURITY: Prevent null or empty passwords ---
+    if (!newPassword || newPassword.trim() === "") {
+        alert("Password cannot be empty!");
+        return; 
+    }
+    if (newPassword.length < 5) {
+        alert("Password must be at least 5 characters long.");
+        return;
+    }
+    // -----------------------------------------------------------
+
     try {
-      const response = await fetch('https://dudewalaservices.onrender.com/api/resetPassword', {
+      const response = await fetch(`${process.env.REACT_APP_BASE_URL}/api/resetPassword`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,35 +70,49 @@ export default function ResetPassword() {
       }
     } catch (error) {
       console.log(error);
-      // Handle error response
     }
   };
 
   return (
-    <div  style={{  display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       {isOldPasswordCorrect ? (
         isPasswordResetSuccessful ? (
-          <div className="text-white fs-1" >Password reset was successful.</div>
+          <div className="text-white fs-1">Password reset was successful.</div>
         ) : (
           <form onSubmit={handleResetPassword}>
-            <label htmlFor="exampleInputPassword1" className="form-label text-white fs-6">
+            <label htmlFor="newPasswordInput" className="form-label text-white fs-6">
               New Password:
-              <input type="password" className="form-control text-white" value={newPassword} onChange={handleNewPasswordChange} />
             </label>
-            <div style={{ justifyContent:'center',display:'flex',allignItems:'center'}}>
-                <button type="submit" className="btn btn-primary btn-shadow">Reset Password</button>
-                </div>
+            {/* REMOVED text-white from the input so you can see the text! */}
+            <input 
+              type="password" 
+              id="newPasswordInput"
+              className="form-control" 
+              value={newPassword} 
+              onChange={(e) => setNewPassword(e.target.value)} 
+            />
+            
+            <div style={{ justifyContent: 'center', display: 'flex', alignItems: 'center', marginTop: '15px' }}>
+              <button type="submit" className="btn btn-primary btn-shadow">Reset Password</button>
+            </div>
           </form>
         )
       ) : (
         <div>
-          <label htmlFor="exampleInputPassword1" className="form-label text-white fs-6">
+          <label htmlFor="oldPasswordInput" className="form-label text-white fs-6">
             Old Password:
-            <input type="password" className="form-control requi" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
           </label>
-          <div style={{ justifyContent:'center',display:'flex',allignItems:'center'}}>
-                <button type="submit" className="btn btn-primary btn-shadow" onClick={handleSubmit}>submit</button>
-                </div>
+          <input 
+            type="password" 
+            id="oldPasswordInput"
+            className="form-control requi" 
+            value={oldPassword} 
+            onChange={(e) => setOldPassword(e.target.value)} 
+          />
+          
+          <div style={{ justifyContent: 'center', display: 'flex', alignItems: 'center', marginTop: '15px' }}>
+            <button type="submit" className="btn btn-primary btn-shadow" onClick={handleSubmit}>Submit</button>
+          </div>
         </div>
       )}
     </div>

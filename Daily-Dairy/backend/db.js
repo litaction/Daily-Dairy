@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 mongoose.set("strictQuery", true);
 const MongoDB = () => {
-    mongoose.connect(process.env.DB, { useNewUrlParser: true }, async (err, res) => {
+    mongoose.connect("mongodb://127.0.0.1:27017/dailydairy", { useNewUrlParser: true }, async (err, res) => {
         if (err) console.log("---", err);
         else {
             console.log("connected")

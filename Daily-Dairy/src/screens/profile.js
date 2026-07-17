@@ -11,7 +11,7 @@ export default function Profile() {
   useEffect(() => {
     const fetchMyOrder = async () => {
       try {
-        const response = await fetch('https://dudewalaservices.onrender.com/api/userprofile', {
+        const response = await fetch(`${process.env.REACT_APP_BASE_URL}/api/userprofile`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

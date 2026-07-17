@@ -7,7 +7,7 @@ export default function MyOrders() {
 
 
   async function fetchMyOrder() {
-    await fetch('https://dudewalaservices.onrender.com/api/myOrderData', {
+    await fetch(`${process.env.REACT_APP_BASE_URL}/api/myOrderData`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

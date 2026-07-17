@@ -2,6 +2,7 @@ const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
 const app = express();
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:4000";
 const port = process.env.PORT||4000;
 const MongoDB = require('./db');
 const path = require('path');
@@ -10,10 +11,11 @@ app.get('/', (req, res) => {
   res.send('Hello World!')
 })
 app.use(cors({
-  origin:"https://dudewala.onrender.com",
-}));
+  origin:frontendUrl,
+}
+));
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "https://dudewala.onrender.com");
+  res.setHeader("Access-Control-Allow-Origin", frontendUrl);
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept"

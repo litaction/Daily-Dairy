@@ -13,7 +13,7 @@ export default function Cart() {
     const checkDefaultOrder = async () => {
       try {
         const userEmail = localStorage.getItem('userEmail');
-        const response = await fetch('https://dudewalaservices.onrender.com/api/CheckDefaultOrder', {
+        const response = await fetch(`${process.env.REACT_APP_BASE_URL}/api/CheckDefaultOrder`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -47,7 +47,7 @@ export default function Cart() {
     try {
       const userEmail = localStorage.getItem('userEmail');
       console.log(userEmail);
-      const response = await fetch('https://dudewalaservices.onrender.com/api/OrderData', {
+      const response = await fetch(`${process.env.REACT_APP_BASE_URL}/api/OrderData`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ export default function Cart() {
     try {
       const userEmail = localStorage.getItem('userEmail');
       console.log(userEmail);
-      const response = await fetch('https://dudewalaservices.onrender.com/api/DefaultOrderdata', {
+      const response = await fetch(`${process.env.REACT_APP_BASE_URL}/api/DefaultOrderdata`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

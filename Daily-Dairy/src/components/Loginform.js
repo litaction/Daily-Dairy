@@ -11,7 +11,7 @@ export default function Loginform() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-          const response = await fetch("https://dudewalaservices.onrender.com/api/LoginUser", {
+          const response = await fetch(`${process.env.REACT_APP_BASE_URL}/api/LoginUser`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

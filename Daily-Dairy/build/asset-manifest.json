@@ -1,0 +1,22 @@
+{
+  "files": {
+    "main.css": "/static/css/main.717e4e5a.css",
+    "main.js": "/static/js/main.736013e3.js",
+    "static/js/787.05d39acc.chunk.js": "/static/js/787.05d39acc.chunk.js",
+    "static/media/imgonline-com-ua-resize-luG74IhT8mmWx.png": "/static/media/imgonline-com-ua-resize-luG74IhT8mmWx.632c24001d01577cca26.png",
+    "static/media/imgonline-com-ua-resize-Fxd9oEZrXTVkjiv.png": "/static/media/imgonline-com-ua-resize-Fxd9oEZrXTVkjiv.67833f17d8646d3bf7b6.png",
+    "static/media/imgonline-com-ua-resize-sL7iPXnhKSiOOV.png": "/static/media/imgonline-com-ua-resize-sL7iPXnhKSiOOV.ec80bf863eb1c25ddfb2.png",
+    "static/media/imgonline-com-ua-resize-gnolnSLYg5.png": "/static/media/imgonline-com-ua-resize-gnolnSLYg5.cbdb442e8e7534b5af59.png",
+    "static/media/imgonline-com-ua-resize-hmIjyxUomoINi.png": "/static/media/imgonline-com-ua-resize-hmIjyxUomoINi.59c12fb444bb8c0badb4.png",
+    "static/media/imgonline-com-ua-resize-J3lUwCH6ivQVKyCQ.png": "/static/media/imgonline-com-ua-resize-J3lUwCH6ivQVKyCQ.1238cf466f8dd4e01e84.png",
+    "static/media/imgonline-com-ua-resize-0CsIkD5TPzuXuzX8.png": "/static/media/imgonline-com-ua-resize-0CsIkD5TPzuXuzX8.fed44d0cee3f926309d4.png",
+    "index.html": "/index.html",
+    "main.717e4e5a.css.map": "/static/css/main.717e4e5a.css.map",
+    "main.736013e3.js.map": "/static/js/main.736013e3.js.map",
+    "787.05d39acc.chunk.js.map": "/static/js/787.05d39acc.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.717e4e5a.css",
+    "static/js/main.736013e3.js"
+  ]
+}

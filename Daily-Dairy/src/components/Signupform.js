@@ -16,7 +16,7 @@ export default function Signupform() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-          const response = await fetch("https://dudewalaservices.onrender.com/api/CreateUser", {
+          const response = await fetch(`${process.env.REACT_APP_BASE_URL}/api/CreateUser`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

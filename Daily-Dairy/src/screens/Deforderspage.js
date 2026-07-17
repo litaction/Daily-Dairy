@@ -9,7 +9,7 @@ export default function Deforderspage() {
   const [toDate, setToDate] = useState('');
   const [daysDiff, setDaysDiff] = useState(0);
   const fetchMyOrder = async () => {
-    await fetch('https://dudewalaservices.onrender.com/api/DisplayDefaultOrderdata', {
+    await fetch(`${process.env.REACT_APP_BASE_URL}/api/DisplayDefaultOrderdata`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -44,7 +44,7 @@ export default function Deforderspage() {
   const totalPrice = orderData?.reduce((total, food) => total + food.totalPrice, 0) ?? 0;
 
   const handledropOrder = async () => {
-    await fetch('https://dudewalaservices.onrender.com/api/DropDefaultOrder', {
+    await fetch(`${process.env.REACT_APP_BASE_URL}/api/DropDefaultOrder`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
