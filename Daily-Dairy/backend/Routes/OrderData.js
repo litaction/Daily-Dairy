@@ -7,7 +7,7 @@ router.post('/orderData',fetchuser, async (req, res) => {
     const loggedInUser=await user.findById(req.user.id);
     if(!loggedInUser) res.status(401).json({error:'User not found'});
     let data = req.body.order_data
-    await data.splice(0,0,{Order_date:req.body.order_date})
+    data.splice(0,0,{Order_date:new Date().toDateString()})
     let eId = await Order.findOne({ 'email': loggedInUser.email })    
     console.log(eId)
     if (eId===null) {

@@ -56,13 +56,11 @@ router.post("/LoginUser", [
     body('password', 'Password should be at least 5 characters long').isLength({ min: 5 })
   ], async (req, res) => {
     const errors = validationResult(req);
+    const email=req.body.email;
+    const password=req.body.password;
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-  
-      const loggedInUser= await user.findById(req.user.id);
-      if(!loggedInUser) return res.status(401).json({error: 'User Not found'});
-      const email=loggedInUser.email;
     try {
       const foundUser = await user.findOne({ email });
   
@@ -73,7 +71,11 @@ router.post("/LoginUser", [
       if (!pwdcompare) {
         return res.status(400).json({ error: "Password mismatch. Please try again." });
       }
-      
+      const data={
+        user:{
+          id:foundUser.id
+        }
+      };
       const authToken=jwt.sign(data,process.env.jwtsecret,{expiresIn: '24h'})
       console.log("The secret from env is: ", process.env.jwtsecret)
       res.json({ success: true ,authToken:authToken});

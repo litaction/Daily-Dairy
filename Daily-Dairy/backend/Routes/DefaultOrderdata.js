@@ -9,7 +9,7 @@ const user=require('../models/User')
 // The daily order materialization, extracted so it can be called from:
  // the cron, a dev route (testing), and later a startup catch-up check.
  async function runDailyOrders() {
-     const currentDate = new Date().toLocaleDateString();
+     const currentDate = new Date().toDateString();
  
      await Order.updateMany({}, { $set: { to_date: currentDate } });
  
@@ -65,8 +65,8 @@ router.post('/DefaultOrderdata',fetchuser, async (req, res) => {
             await Order.create({
                 email: loggedInUser.email,
                 order_data: data,
-                order_date: req.body.order_date,
-                to_date: req.body.order_date
+                order_date: new Date().toDateString(),
+                to_date: new Date().toDateString()
             }).then(() => {
                 res.json({ success: true })
             })
