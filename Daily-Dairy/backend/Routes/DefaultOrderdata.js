@@ -3,54 +3,67 @@ const router = express.Router();
 const Order = require('../models/DefaultOrders');
 const OrderDB = require('../models/Orders');
 const cron = require('node-cron');
-const job = cron.schedule('0 0 * * *', async () => {
-    try {
-        const currentDate = new Date().toLocaleDateString();
-        
-        await Order.updateMany({}, { $set: { to_date: currentDate } });
+const fetchuser=require('../middleware/auth');
+const user=require('../models/User')
 
-        
-        const orders = await Order.find({ to_date: currentDate });
+// The daily order materialization, extracted so it can be called from:
+ // the cron, a dev route (testing), and later a startup catch-up check.
+ async function runDailyOrders() {
+     const currentDate = new Date().toLocaleDateString();
+ 
+     await Order.updateMany({}, { $set: { to_date: currentDate } });
+ 
+     const orders = await Order.find({ to_date: currentDate });
+ 
+     for (const order of orders) {
+         let data = order.order_data
+         data.splice(0, 0, { Order_date: order.to_date })
+         let eId = await OrderDB.findOne({ 'email': order.email })
+ 
+         if (eId === null) {
+             await OrderDB.create({
+                 email: order.email,
+                 order_data: [data]
+             })
+         }
+         else {
+             await OrderDB.findOneAndUpdate({ email: order.email },
+                 { $push: { order_data: data } })
+         }
+     }
+     console.log('Daily orders run completed');
+ }
+ 
+ const job = cron.schedule('0 0 * * *', async () => {
+     try {
+         await runDailyOrders();
+     } catch (error) {
+         console.log('Cron job error:', error.message);
+     }
+ });
+ 
+ job.start();
+ 
+ // DEV ONLY — manual midnight trigger for testing. Remove before merging to master.
+ router.post('/runCronNow', async (req, res) => {
+     try {
+         await runDailyOrders();
+         res.json({ success: true, message: 'Daily orders run executed' });
+     } catch (error) {
+         res.status(500).json({ success: false, error: error.message });
+     }
+ });
 
-        for (const order of orders) {
-            let data = order.order_data
-            await data.splice(0,0,{Order_date:order.to_date})
-            let eId = await OrderDB.findOne({ 'email':order.email })    
-            
-            if (eId===null) {
-                
-                    await OrderDB.create({
-                        email: order.email,
-                        order_data:[data]
-                    })
-                
-            }
-        
-            else {
-                
-                    await OrderDB.findOneAndUpdate({email:order.email},
-                        { $push:{order_data: data} })
-                
-            }
-        }
-
-        console.log('Cron job executed successfully');
-    } catch (error) {
-        console.log('Cron job error:', error.message);
-    }
-});
-
-job.start();
-
-router.post('/DefaultOrderdata', async (req, res) => {
+router.post('/DefaultOrderdata',fetchuser, async (req, res) => {
     let data = req.body.order_data
-
-    let eId = await Order.findOne({ 'email': req.body.email })
+    const loggedInUser=await user.findById(req.user.id);
+    if(!loggedInUser) res.status(401).json({error:'User not found'});
+    let eId = await Order.findOne({ 'email': loggedInUser.email })
     if (eId === null) {
         try {
 
             await Order.create({
-                email: req.body.email,
+                email: loggedInUser.email,
                 order_data: data,
                 order_date: req.body.order_date,
                 to_date: req.body.order_date
@@ -75,9 +88,11 @@ router.post('/DefaultOrderdata', async (req, res) => {
 })
 
 
-router.post('/DisplayDefaultOrderdata', async (req, res) => {
+router.post('/DisplayDefaultOrderdata',fetchuser, async (req, res) => {
     try {
-      const email = req.body.email;
+         const loggedInUser=await user.findById(req.user.id);
+        if(!loggedInUser) res.status(401).json({error:'User not found'});
+      const email = loggedInUser.email;
       
       const order = await Order.findOne({ email });
   
@@ -106,10 +121,11 @@ router.post('/DisplayDefaultOrderdata', async (req, res) => {
   });
   
 
-  router.post('/DropDefaultOrder', async (req, res) => {
+  router.post('/DropDefaultOrder',fetchuser, async (req, res) => {
     try {
-        job.stop();
-        const result = await Order.deleteOne({ email: req.body.email });
+         const loggedInUser=await user.findById(req.user.id);
+            if(!loggedInUser) res.status(401).json({error:'User not found'});
+        const result = await Order.deleteOne({ email: loggedInUser.email });
         
         if (result.deletedCount === 0) {
           return res.status(404).json({ message: 'Default order not found' });
@@ -120,9 +136,11 @@ router.post('/DisplayDefaultOrderdata', async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
       }
 });
-router.post('/CheckDefaultOrder', async (req, res) => {
+router.post('/CheckDefaultOrder',fetchuser, async (req, res) => {
     try {
-      const existingOrder = await Order.findOne({ email: req.body.email });
+         const loggedInUser=await user.findById(req.user.id);
+        if(!loggedInUser) res.status(401).json({error:'User not found'});
+      const existingOrder = await Order.findOne({ email: loggedInUser.email });
       const exists = existingOrder !== null;
   
       res.json({ exists });

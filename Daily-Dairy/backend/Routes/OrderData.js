@@ -1,17 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Orders');
-
-router.post('/orderData', async (req, res) => {
+const fetchuser=require('../middleware/auth')
+const user=require('../models/User')
+router.post('/orderData',fetchuser, async (req, res) => {
+    const loggedInUser=await user.findById(req.user.id);
+    if(!loggedInUser) res.status(401).json({error:'User not found'});
     let data = req.body.order_data
     await data.splice(0,0,{Order_date:req.body.order_date})
-    let eId = await Order.findOne({ 'email': req.body.email })    
+    let eId = await Order.findOne({ 'email': loggedInUser.email })    
     console.log(eId)
     if (eId===null) {
         try {
         
             await Order.create({
-                email: req.body.email,
+                email: loggedInUser.email,
                 order_data:[data]
             }).then(() => {
                 res.json({ success: true })
@@ -25,7 +28,7 @@ router.post('/orderData', async (req, res) => {
 
     else {
         try {
-            await Order.findOneAndUpdate({email:req.body.email},
+            await Order.findOneAndUpdate({email:loggedInUser.email},
                 { $push:{order_data: data} }).then(() => {
                     res.json({ success: true })
                 })
@@ -37,9 +40,11 @@ router.post('/orderData', async (req, res) => {
 })
 
 
-router.post('/myOrderData', async (req, res) => {
+router.post('/myOrderData', fetchuser,async (req, res) => {
     try {
-        const { email } = req.body;
+         const loggedInUser=await user.findById(req.user.id);
+    if(!loggedInUser) res.status(401).json({error:'User not found'});
+    const email=loggedInUser.email;
         const eId = await Order.findOne({ 'email': email });
         const orderData = eId.order_data;
        
@@ -61,11 +66,12 @@ router.post('/myOrderData', async (req, res) => {
 });
 
 
-router.post('/todaysorders', async (req, res) => {
+router.post('/todaysorders',fetchuser, async (req, res) => {
     try {
-        const today = new Date().toDateString(); 
-
-        const order = await Order.findOne({ email: req.body.email });
+         const loggedInUser=await user.findById(req.user.id);
+    if(!loggedInUser) res.status(401).json({error:'User not found'});
+        const today = new Date().toDateString();   
+        const order = await Order.findOne({ email: loggedInUser.email });
 
         const todayOrders = order.order_data.filter((orderGroup) => {
             const orderDate = orderGroup[0].Order_date;

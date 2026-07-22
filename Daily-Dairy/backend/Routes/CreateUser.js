@@ -4,7 +4,7 @@ const user = require('../models/User');
 const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-
+const fetchuser=require('../middleware/auth')
 router.post(
   '/CreateUser',
   [
@@ -60,9 +60,9 @@ router.post("/LoginUser", [
       return res.status(400).json({ errors: errors.array() });
     }
   
-    const email = req.body.email;
-    const password = req.body.password;
-  
+      const loggedInUser= await user.findById(req.user.id);
+      if(!loggedInUser) return res.status(401).json({error: 'User Not found'});
+      const email=loggedInUser.email;
     try {
       const foundUser = await user.findOne({ email });
   
@@ -74,12 +74,7 @@ router.post("/LoginUser", [
         return res.status(400).json({ error: "Password mismatch. Please try again." });
       }
       
-      const data={
-        user:{
-           id:foundUser.id
-        }
-      }
-      const authToken=jwt.sign(data,process.env.jwtsecret)
+      const authToken=jwt.sign(data,process.env.jwtsecret,{expiresIn: '24h'})
       console.log("The secret from env is: ", process.env.jwtsecret)
       res.json({ success: true ,authToken:authToken});
     } catch (error) {
@@ -89,21 +84,20 @@ router.post("/LoginUser", [
   });
 
 
-  router.post('/userprofile', async (req, res) => {
+  router.post('/userprofile', fetchuser,async (req, res) => {
     try {
-       
-        let eId = await user.findOne({ 'email': req.body.email })
-        
-        res.json({userData:eId})
+        const loggedInUser= await user.findById(req.user.id);
+        if(!loggedInUser) return res.status(401).json({error: 'User Not found'});
+        res.json({userData:loggedInUser})
     } catch (error) {
         res.send("Error",error.message)
     }
     
-
+  
 });
 
 
-router.post('/updateUser', async (req, res) => {
+router.post('/updateUser',fetchuser, async (req, res) => {
   try {
     const { name, apartmentName, blockNumber, floorNumber, roomNumber, contactNumber } = req.body;
 
@@ -128,17 +122,12 @@ router.post('/updateUser', async (req, res) => {
   }
 });
 
-router.post('/validateOldPassword', async (req, res) => {
+router.post('/validateOldPassword',fetchuser, async (req, res) => {
   try {
-    const { email, oldPassword } = req.body;
-
-    const foundUser = await user.findOne({ email });
-
-    if (!foundUser) {
-      return res.status(400).json({ success: false, message: 'User not found.' });
-    }
-
-    const isPasswordValid = await bcrypt.compare(oldPassword, foundUser.password);
+     const loggedInUser=await user.findById(req.user.id);
+        if(!loggedInUser) return res.status(401).json({error:'User not found'});
+   const {oldPassword}=req.body;
+    const isPasswordValid = await bcrypt.compare(oldPassword, loggedInUser.password);
 
     if (isPasswordValid) {
       return res.json({ success: true });
@@ -153,22 +142,23 @@ router.post('/validateOldPassword', async (req, res) => {
 
 
 
-router.post('/resetPassword', async (req, res) => {
+router.post('/resetPassword',fetchuser, async (req, res) => {
   try {
+    const loggedInUser=await user.findById(req.user.id);
+        if(!loggedInUser) return res.status(401).json({error:'User not found'});
     const newPassword = req.body.newPassword;
-    const email = req.body.email;
 
-    const saltRounds = 10; // Number of salt rounds
+    const saltRounds = 10; 
     const salt = await bcrypt.genSalt(saltRounds);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    const updatedUser = await user.findOneAndUpdate(
-      { email: email },
+    const updatedUser = await user.findByIdAndUpdate(
+       req.user.id,
       { password: hashedPassword },
       { new: true }
     );
 
-    res.json({ success: true, user: updatedUser });
+    res.json({ success: true});
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ success: false, error: 'An error occurred. Please try again.' });

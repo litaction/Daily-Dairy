@@ -1,7 +1,14 @@
 const mongoose = require('mongoose');
+require('dotenv').config(); // 1. Load the variables from the .env file
+
 mongoose.set("strictQuery", true);
+
 const MongoDB = () => {
-    mongoose.connect("mongodb://127.0.0.1:27017/dailydairy", { useNewUrlParser: true }, async (err, res) => {
+    // 2. Fetch the URI from your .env file
+    const mongoURI = process.env.MONGO_URI;
+
+    // 3. Pass the mongoURI variable into the connect function
+    mongoose.connect(mongoURI, { useNewUrlParser: true }, async (err, res) => {
         if (err) console.log("---", err);
         else {
             console.log("connected")
@@ -26,9 +33,6 @@ const MongoDB = () => {
                 }})
         }
     });
-
 };
 
-
 module.exports = MongoDB;
-
