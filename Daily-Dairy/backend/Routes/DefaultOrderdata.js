@@ -1,153 +1,148 @@
 const express = require('express');
 const router = express.Router();
-const Order = require('../models/DefaultOrders');
-const OrderDB = require('../models/Orders');
+const DefaultOrder = require('../models/DefaultOrders');
+const Order = require('../models/Orders');
 const cron = require('node-cron');
 const fetchuser=require('../middleware/auth');
 const user=require('../models/User')
+  async function runDailyOrders() {
+   const today = new Date().toDateString();
+   const subs = await DefaultOrder.find({ active: true });  // only active subscriptions
+ 
+   let placed = 0, skipped = 0;
+ 
+   for (const sub of subs) {
+     // how many days since this sub last placed an order?
+     // never run before (lastRun null) => due now
+     const daysSince = sub.lastRun
+       ? Math.floor((Date.now() - new Date(sub.lastRun)) / 86400000)
+       : Infinity;
+ 
+     if (daysSince < sub.intervalDays) { skipped++; continue; }  // not due yet
+ 
+     // due → create ONE clean order document
+     const orderPrice = sub.items.reduce((sum, it) => sum + (Number(it.totalPrice) || 0), 0);
+     await Order.create({
+       email: sub.email,
+       orderDate: today,
+       items: sub.items,
+       orderPrice,
+       source: 'subscription',
+     });
+ 
+     sub.lastRun = today;   // remember we fired today
+     await sub.save();
+     placed++;
+   }
+   console.log(`runDailyOrders: ${placed} placed, ${skipped} skipped (${subs.length} active subs)`);
 
-// The daily order materialization, extracted so it can be called from:
- // the cron, a dev route (testing), and later a startup catch-up check.
- async function runDailyOrders() {
-     const currentDate = new Date().toDateString();
- 
-     await Order.updateMany({}, { $set: { to_date: currentDate } });
- 
-     const orders = await Order.find({ to_date: currentDate });
- 
-     for (const order of orders) {
-         let data = order.order_data
-         data.splice(0, 0, { Order_date: order.to_date })
-         let eId = await OrderDB.findOne({ 'email': order.email })
- 
-         if (eId === null) {
-             await OrderDB.create({
-                 email: order.email,
-                 order_data: [data]
-             })
-         }
-         else {
-             await OrderDB.findOneAndUpdate({ email: order.email },
-                 { $push: { order_data: data } })
-         }
-     }
-     console.log('Daily orders run completed');
+   return { placed, skipped };
  }
  
+ // fires every midnight
  const job = cron.schedule('0 0 * * *', async () => {
-     try {
-         await runDailyOrders();
-     } catch (error) {
-         console.log('Cron job error:', error.message);
-     }
+   try { await runDailyOrders(); }
+   catch (err) { console.log('Cron error:', err.message); }
  });
- 
  job.start();
  
- // DEV ONLY — manual midnight trigger for testing. Remove before merging to master.
- router.post('/runCronNow', async (req, res) => {
-     try {
-         await runDailyOrders();
-         res.json({ success: true, message: 'Daily orders run executed' });
-     } catch (error) {
-         res.status(500).json({ success: false, error: error.message });
-     }
+ // DEV ONLY — manual trigger for testing. REMOVE before deploy.
+ router.post('/runCronNow', fetchuser, async (req, res, next) => {
+   try {
+     const result = await runDailyOrders();
+     res.json({ success: true, ...result });
+   } catch (error) { next(error); }
  });
 
-router.post('/DefaultOrderdata',fetchuser, async (req, res) => {
-    let data = req.body.order_data
-    const loggedInUser=await user.findById(req.user.id);
-    if(!loggedInUser) res.status(401).json({error:'User not found'});
-    let eId = await Order.findOne({ 'email': loggedInUser.email })
-    if (eId === null) {
-        try {
-
-            await Order.create({
-                email: loggedInUser.email,
-                order_data: data,
-                order_date: new Date().toDateString(),
-                to_date: new Date().toDateString()
-            }).then(() => {
-                res.json({ success: true })
-            })
-        } catch (error) {
-            console.log(error.message)
-            res.send("Server Error", error.message)
-
-        }
-    }
-
-    else {
-        try {
-            res.json({ success: false })
-        } catch (error) {
-            console.log(error.message)
-            res.send("Server Error", error.message)
-        }
-    }
-})
+ router.post('/DefaultOrderdata', fetchuser, async (req, res, next) => {
+   try {
+     const loggedInUser = await user.findById(req.user.id);
+     if (!loggedInUser) return res.status(401).json({ error: 'User not found' });
+ 
+     const items = req.body.order_data;
+     if (!Array.isArray(items) || items.length === 0) {
+       return res.status(400).json({ success: false, error: 'Subscription must have at least one item' });
+     }
+ 
+     let intervalDays = Number(req.body.intervalDays) || 1;
+     if (intervalDays < 1) intervalDays = 1;
+ 
+     const today = new Date().toDateString();
+ 
+     const sub = await DefaultOrder.create({
+       email: loggedInUser.email,
+       items,
+       intervalDays,
+       startDate: today,
+       lastRun: null,   // never run yet → first cron pass will place it
+       active: true,
+     });
+ 
+     res.json({ success: true, subscriptionId: sub._id });
+   } catch (error) {
+     next(error);
+   }
+ });
 
 
-router.post('/DisplayDefaultOrderdata',fetchuser, async (req, res) => {
-    try {
-         const loggedInUser=await user.findById(req.user.id);
-        if(!loggedInUser) res.status(401).json({error:'User not found'});
-      const email = loggedInUser.email;
-      
-      const order = await Order.findOne({ email });
-  
-      if (!order) {
-        return res.status(404).json({ message: 'Order not found' });
-      }
-      const fromDate = order.order_date;
-      const toDate = order.to_date;
-      const fromDatestr = new Date(order.order_date);
-      const toDatestr = new Date(order.to_date);
-      const timeDiff = toDatestr.getTime() - fromDatestr.getTime();
-      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-      const { order_data } = order;
-  
-      const extractedData = order_data.map((orderItem) => ({
-        name: orderItem.name,
-        selectedQuantity: orderItem.selectedQuantity,
-        totalPrice: orderItem.totalPrice,
-        brand: orderItem.brand,
-      }));
-  
-      res.json({extractedData,fromDate, toDate, daysDiff});
-    } catch (error) {
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-  
+ router.post('/DisplayDefaultOrderdata', fetchuser, async (req, res, next) => {
+   try {
+     const loggedInUser = await user.findById(req.user.id);
+     if (!loggedInUser) return res.status(401).json({ error: 'User not found' });
+ 
+     const subscriptions = await DefaultOrder.find({ email: loggedInUser.email }).sort({ createdAt: -1 });
+ 
+     res.json({ success: true, subscriptions });
+   } catch (error) {
+     next(error);
+   }
+ });
 
-  router.post('/DropDefaultOrder',fetchuser, async (req, res) => {
-    try {
-         const loggedInUser=await user.findById(req.user.id);
-            if(!loggedInUser) res.status(401).json({error:'User not found'});
-        const result = await Order.deleteOne({ email: loggedInUser.email });
-        
-        if (result.deletedCount === 0) {
-          return res.status(404).json({ message: 'Default order not found' });
-        }
-        
-        res.json({ success: true });
-      } catch (error) {
-        res.status(500).json({ message: 'Internal server error' });
-      }
-});
-router.post('/CheckDefaultOrder',fetchuser, async (req, res) => {
-    try {
-         const loggedInUser=await user.findById(req.user.id);
-        if(!loggedInUser) res.status(401).json({error:'User not found'});
-      const existingOrder = await Order.findOne({ email: loggedInUser.email });
-      const exists = existingOrder !== null;
-  
-      res.json({ exists });
-    } catch (error) {
-      console.log(error.message);
-      res.status(500).send('Server Error');
-    }
-  });
 
+  router.post('/UpdateDefaultOrder', fetchuser, async (req, res, next) => {
+   try {
+     const loggedInUser = await user.findById(req.user.id);
+     if (!loggedInUser) return res.status(401).json({ error: 'User not found' });
+ 
+     const { subscriptionId, intervalDays, order_data, active } = req.body;
+     if (!subscriptionId) {
+       return res.status(400).json({ success: false, error: 'subscriptionId required' });
+     }
+ 
+     // build only the fields the client actually sent
+     const updates = {};
+ 
+     if (intervalDays !== undefined) {
+       const n = Number(intervalDays);
+       if (!n || n < 1) return res.status(400).json({ success: false, error: 'intervalDays must be >= 1' });
+       updates.intervalDays = n;
+     }
+ 
+     if (order_data !== undefined) {
+       if (!Array.isArray(order_data) || order_data.length === 0) {
+         return res.status(400).json({ success: false, error: 'items must be a non-empty array' });
+       }
+       updates.items = order_data;
+     }
+ 
+     if (active !== undefined) {
+       updates.active = Boolean(active);  // pause / resume without deleting
+     }
+ 
+     if (Object.keys(updates).length === 0) {
+       return res.status(400).json({ success: false, error: 'Nothing to update' });
+     }
+ 
+     const sub = await DefaultOrder.findOneAndUpdate(
+       { _id: subscriptionId, email: loggedInUser.email },  // ownership check in the query
+       { $set: updates },
+       { new: true, runValidators: true }          // re-validate the new items against schema
+     );
+     if (!sub) return res.status(404).json({ success: false, error: 'Subscription not found' });
+ 
+     res.json({ success: true, subscription: sub });
+   } catch (error) {
+     next(error);
+   }
+ });
 module.exports = router;

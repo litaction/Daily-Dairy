@@ -3,99 +3,51 @@ const router = express.Router();
 const Order = require('../models/Orders');
 const fetchuser=require('../middleware/auth')
 const user=require('../models/User')
-router.post('/orderData',fetchuser, async (req, res) => {
-    const loggedInUser=await user.findById(req.user.id);
-    if(!loggedInUser) res.status(401).json({error:'User not found'});
-    let data = req.body.order_data
-    data.splice(0,0,{Order_date:new Date().toDateString()})
-    let eId = await Order.findOne({ 'email': loggedInUser.email })    
-    console.log(eId)
-    if (eId===null) {
-        try {
-        
-            await Order.create({
-                email: loggedInUser.email,
-                order_data:[data]
-            }).then(() => {
-                res.json({ success: true })
-            })
-        } catch (error) {
-            console.log(error.message)
-            res.send("Server Error", error.message)
-
-        }
-    }
-
-    else {
-        try {
-            await Order.findOneAndUpdate({email:loggedInUser.email},
-                { $push:{order_data: data} }).then(() => {
-                    res.json({ success: true })
-                })
-        } catch (error) {
-            console.log(error.message)
-            res.send("Server Error", error.message)
-        }
-    }
-})
+router.post('/orderData', fetchuser, async (req, res, next) => {
+   try {
+     const loggedInUser = await user.findById(req.user.id);
+     if (!loggedInUser) return res.status(401).json({ error: 'User not found' });
+ 
+     const items = req.body.order_data;
+     if (!Array.isArray(items) || items.length === 0) {
+       return res.status(400).json({ success: false, error: 'Order must contain at least one item' });
+     }
+ 
+     const orderPrice = items.reduce((sum, it) => sum + (Number(it.totalPrice) || 0), 0);
+ 
+     const newOrder = await Order.create({
+       email: loggedInUser.email,
+       orderDate: new Date().toDateString(), 
+       items,
+       orderPrice,
+       source: 'manual',
+     });
+ 
+     res.json({ success: true, orderId: newOrder._id });
+   } catch (error) {
+     next(error);
+   }
+ });
 
 
-router.post('/myOrderData', fetchuser,async (req, res) => {
-    try {
-         const loggedInUser=await user.findById(req.user.id);
-    if(!loggedInUser) res.status(401).json({error:'User not found'});
-    const email=loggedInUser.email;
-        const eId = await Order.findOne({ 'email': email });
-        const orderData = eId.order_data;
-       
-
-        orderData.forEach((orderGroup) => {
-            let orderPrice = 0;
-            for (let i = 1; i < orderGroup.length; i++) {
-                if (orderGroup[i].totalPrice) {
-                    orderPrice += orderGroup[i].totalPrice;
-                }
-            }
-            orderGroup.push({orderprice:orderPrice});
-        });
-
-        res.json({ orderData: eId});
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-
-router.post('/todaysorders',fetchuser, async (req, res) => {
-    try {
-         const loggedInUser=await user.findById(req.user.id);
-    if(!loggedInUser) res.status(401).json({error:'User not found'});
-        const today = new Date().toDateString();   
-        const order = await Order.findOne({ email: loggedInUser.email });
-
-        const todayOrders = order.order_data.filter((orderGroup) => {
-            const orderDate = orderGroup[0].Order_date;
-            return orderDate === today;
-        });
-
-        const extractedData = [];
-        todayOrders.forEach((orderGroup) => {
-            for (let i = 1; i < orderGroup.length; i++) {
-                extractedData.push({
-                    name: orderGroup[i].name,
-                    brand: orderGroup[i].brand,
-                    selectedQuantity: orderGroup[i].selectedQuantity,
-                    totalPrice: orderGroup[i].totalPrice,
-                });
-            }
-        });
-
-        res.json({ orderData: extractedData });
-        
-    } catch (error) {
-        res.send("Error: " + error.message);
-    }
-});
+ 
+ router.post('/todaysorders', fetchuser, async (req, res, next) => {
+   try {
+     const loggedInUser = await user.findById(req.user.id);
+     if (!loggedInUser) return res.status(401).json({ error: 'User not found' });
+ 
+     const today = new Date().toDateString();  
+     const orders = await Order.find({
+       email: loggedInUser.email,
+       orderDate: today,
+     });
+     const items = orders.flatMap(o => o.items);
+ 
+     res.json({ success: true, orderDate: today, orders, items });
+   } catch (error) {
+     next(error);
+   }
+ });
 
   
   
